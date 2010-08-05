@@ -48,6 +48,10 @@ namespace NVPMManager
         //NVIDIA regkey.
         public RegistryKey nvidiaKey;
 
+        //NVIDIA Secondary key (FOR SLI/HYBRID SYSTEMS)
+        public RegistryKey nvidiaSLIKey;
+        
+
         //Registry Manager
         private RegistryManager regmgr;
 
@@ -177,7 +181,7 @@ namespace NVPMManager
 
                 //}
                 //0.95 patch. Some rare cases do not have the ProviderName entry. However, they have other entries that can be identified. Let's give it another
-                //chance to identify the key, alright? This however is not tested. Need feddback here!
+                //chance to identify the key, alright? This is not tested. Need feedback here!
                 if (possibleKeys.Count == 0)
                 {
                     logsub("Changing to alternate Nvidia root key identification... (Not fully tested. Please provide feedback)");
@@ -198,16 +202,22 @@ namespace NVPMManager
                     }
 
                 }
-                
+                                
                 //Ok, now we have all the matches. THERE SHOULD BE ONLY ONE. If there are more, how can we be sure which one is correct?
-                if (possibleKeys.Count > 1)
+                //0.98 ADDED SUPPORT FOR SLI/HYBRID SYSTEMS.
+                //Let's admit a secondary nvidia key. Will be almost transparent to the app. Won't change the dialogs whatsoever.
+                //To add support the PowermizerManager class will check a global variable, and when in SLIMode, will apply the exact same registry changes
+                //To a secondary key as well. 
+                //Not the most elegant solution. Will improve over time if it works at all, which is still improbable.
+                if (possibleKeys.Count > 2)
                 {
-                    Exception w = new Exception("More than one key identified. Can't be sure which one to modify. Be aware that this is something expected in some rare SLI setups. However you can contact devs and send debug info using the [Problems?] button and contribute to solve this problem.");
+                    Exception w = new Exception("More than TWO keys identified. Can't be sure which one to modify. This was not expected as from version 0.98 Powermizer Manager added experimental support for SLI/Hybrid systems. You can try to reinstall your video drivers. This may fix any registry mess that's causing this problem. You can contact devs and send debug info using the [Problems?] button and contribute to solve this problem.");
                     logsub(w.Message);
                     throw (w);
 
                 }
-             
+
+                  
 
                 //So we have 1 key!
                 RegistryKey nvidiaKey = possibleKeys[0];
@@ -217,6 +227,9 @@ namespace NVPMManager
                 {
                     //We need to RE-open the key with write access.
                      nvidiaKey= regmgr.reOpenKeyWriteAccess(nvidiaKey);
+
+                     //Failsafe.//Global variable indicating SLI Mode is DISABLED
+                     Properties.Settings.Default.SLIModeEnabled = false;
                      
                 }
                 catch
@@ -225,9 +238,36 @@ namespace NVPMManager
                     logsub("If you have UAC activated, you must run this application with Administrator Privileges (Right click, Run as administrator...)");
                     throw;
                 }
+               
                 
+                //SLI MODE SUPPORT
+                if (possibleKeys.Count > 1)
+                {
+                    //SLI MODE. We have exactly 2 keys. Let's init the secondary as well.
+                    this.nvidiaSLIKey = possibleKeys[1];
+                    logsub("Secondary NVIDIA Key Found. SLI/Hybrid Mode ACTIVATED.");
+                    logsub("Key found at: " + this.nvidiaSLIKey.ToString());
+                    
+                    //Global variable indicating SLI Mode is ENABLED
+                    Properties.Settings.Default.SLIModeEnabled = true;
 
-                return nvidiaKey;
+
+                    try
+                    {
+                        //We need to RE-open the key with write access.
+                        this.nvidiaSLIKey = regmgr.reOpenKeyWriteAccess(this.nvidiaSLIKey);
+
+                    }
+                    catch
+                    {
+                        //All errors logged
+                        logsub("If you have UAC activated, you must run this application with Administrator Privileges (Right click, Run as administrator...)");
+                        throw;
+                    }
+
+                }   
+
+                return nvidiaKey; //THIS RETURN ONLY THE FIRST ONE, AS IT DID FROM THE BEGINNING
 
             }
             catch
@@ -256,10 +296,33 @@ namespace NVPMManager
                     this.regmgr.deleteValue(this.nvidiaKey, auxstruct.PowerMizerBatteryFixedLevel.EntryName);
                     this.regmgr.deleteValue(this.nvidiaKey, auxstruct.PowerMizerACFixedLevel.EntryName);
 
+                    //SLI/HYBRID SUPPORT
+                    if (Properties.Settings.Default.SLIModeEnabled == true)
+                    {
+
+                        this.regmgr.deleteValue(this.nvidiaSLIKey, auxstruct.PowerMizerEnabled.EntryName);
+                        this.regmgr.deleteValue(this.nvidiaSLIKey, auxstruct.PowerMizerGovernor.EntryName);
+                        this.regmgr.deleteValue(this.nvidiaSLIKey, auxstruct.PowerMizerBatteryFixedLevel.EntryName);
+                        this.regmgr.deleteValue(this.nvidiaSLIKey, auxstruct.PowerMizerACFixedLevel.EntryName);
+                    }
+
+
                     deletePowermizerSlowDownSettings();
+
+
                     //Flush the key for the changes to take effect
                     this.regmgr.PersistKeyChanges(this.nvidiaKey);
                     logsub("Success...");
+
+                    //SLI/HYBRID SUPPORT
+                    if (Properties.Settings.Default.SLIModeEnabled == true)
+                    {
+                        this.regmgr.PersistKeyChanges(this.nvidiaSLIKey);
+                        logsub("Success... (SLIKey).");
+                    }
+
+
+                    
                 }
                 catch
                 {
@@ -305,9 +368,42 @@ namespace NVPMManager
                         this.regmgr.deleteValue(this.nvidiaKey, auxstruct.OverheatSlowdownCore.EntryName);
                     }
 
+
                     //Flush the key for the changes to take effect
                     this.regmgr.PersistKeyChanges(this.nvidiaKey);
                     logsub("Success...");
+
+
+                    //SLI/HYBRID SUPPORT
+                    if (Properties.Settings.Default.SLIModeEnabled == true)
+                    {
+                        if (this.regmgr.getDataValue(this.nvidiaSLIKey, auxstruct.OverheatSlowdownEnabled.EntryName) != null)
+                        {
+                            logsub("Deleting...");
+                            this.regmgr.deleteValue(this.nvidiaSLIKey, auxstruct.OverheatSlowdownEnabled.EntryName);
+                        }
+
+                        if (this.regmgr.getDataValue(this.nvidiaSLIKey, auxstruct.OverheatSlowdownMemory.EntryName) != null)
+                        {
+                            logsub("Deleting...");
+                            this.regmgr.deleteValue(this.nvidiaSLIKey, auxstruct.OverheatSlowdownMemory.EntryName);
+                        }
+
+                        if (this.regmgr.getDataValue(this.nvidiaSLIKey, auxstruct.OverheatSlowdownCore.EntryName) != null)
+                        {
+                            logsub("Deleting...");
+                            this.regmgr.deleteValue(this.nvidiaSLIKey, auxstruct.OverheatSlowdownCore.EntryName);
+                        }
+
+
+                        //Flush the key for the changes to take effect
+                        this.regmgr.PersistKeyChanges(this.nvidiaSLIKey);
+                        logsub("Success... (SLIKey).");
+
+                    }
+
+
+
                 }
                 catch
                 {
@@ -336,6 +432,15 @@ namespace NVPMManager
                     this.regmgr.setValue(this.nvidiaKey, settings.PowerMizerBatteryFixedLevel.EntryName, settings.PowerMizerBatteryFixedLevel.EntryValue, settings.PowerMizerBatteryFixedLevel.EntryType);
                     this.regmgr.setValue(this.nvidiaKey, settings.PowerMizerACFixedLevel.EntryName, settings.PowerMizerACFixedLevel.EntryValue, settings.PowerMizerACFixedLevel.EntryType);
 
+                    //SLI/HYBRID SUPPORT
+                    if (Properties.Settings.Default.SLIModeEnabled == true)
+                    {
+                        this.regmgr.setValue(this.nvidiaSLIKey, settings.PowerMizerEnabled.EntryName, settings.PowerMizerEnabled.EntryValue, settings.PowerMizerEnabled.EntryType);
+                        this.regmgr.setValue(this.nvidiaSLIKey, settings.PowerMizerGovernor.EntryName, settings.PowerMizerGovernor.EntryValue, settings.PowerMizerGovernor.EntryType);
+                        this.regmgr.setValue(this.nvidiaSLIKey, settings.PowerMizerBatteryFixedLevel.EntryName, settings.PowerMizerBatteryFixedLevel.EntryValue, settings.PowerMizerBatteryFixedLevel.EntryType);
+                        this.regmgr.setValue(this.nvidiaSLIKey, settings.PowerMizerACFixedLevel.EntryName, settings.PowerMizerACFixedLevel.EntryValue, settings.PowerMizerACFixedLevel.EntryType);
+                    }
+
                     //Overheat SlowDown 
                     if (settings.OverheatSlowdownOverride)
                     {
@@ -343,6 +448,14 @@ namespace NVPMManager
                         this.regmgr.setValue(this.nvidiaKey, settings.OverheatSlowdownEnabled.EntryName, settings.OverheatSlowdownEnabled.EntryValue, settings.OverheatSlowdownEnabled.EntryType);
                         this.regmgr.setValue(this.nvidiaKey, settings.OverheatSlowdownMemory.EntryName, settings.OverheatSlowdownMemory.EntryValue, settings.OverheatSlowdownMemory.EntryType);
                         this.regmgr.setValue(this.nvidiaKey, settings.OverheatSlowdownCore.EntryName, settings.OverheatSlowdownCore.EntryValue, settings.OverheatSlowdownCore.EntryType);
+
+                        //SLI SUPPORT
+                        if (Properties.Settings.Default.SLIModeEnabled == true)
+                        {
+                            this.regmgr.setValue(this.nvidiaSLIKey, settings.OverheatSlowdownEnabled.EntryName, settings.OverheatSlowdownEnabled.EntryValue, settings.OverheatSlowdownEnabled.EntryType);
+                            this.regmgr.setValue(this.nvidiaSLIKey, settings.OverheatSlowdownMemory.EntryName, settings.OverheatSlowdownMemory.EntryValue, settings.OverheatSlowdownMemory.EntryType);
+                            this.regmgr.setValue(this.nvidiaSLIKey, settings.OverheatSlowdownCore.EntryName, settings.OverheatSlowdownCore.EntryValue, settings.OverheatSlowdownCore.EntryType);
+                        }
                     }
                     else //If we dont want them overriden
                     {
@@ -355,6 +468,14 @@ namespace NVPMManager
                     //Flush the key for the changes to take effect
                     this.regmgr.PersistKeyChanges(this.nvidiaKey);
                     logsub("Success...");
+
+                    //SLI SUPPORT
+                    if (Properties.Settings.Default.SLIModeEnabled == true)
+                    {
+                        this.regmgr.PersistKeyChanges(this.nvidiaSLIKey);
+                        logsub("Success... (SLIKey).");
+                    }
+
                 }
                 catch
                 {
@@ -402,7 +523,7 @@ namespace NVPMManager
             //In some rare cases, the PerfLevelSrc entry is there, but the others are not, leading to strange situations. This provides a way out.
             if ((enab == null) || (gov == null) || (batfix == null) || (acfix == null))
             {
-                logsub("Your Registry settings seem to be inconsistent. You have **SOME** of the required entries for PowerMizer Management, but strangely enough, not **ALL** of them.This can be caused by installing/uninstalling several diferent version of drivers.");
+                logsub("Your Registry settings seem to be inconsistent. You have **SOME** of the required entries for PowerMizer Management, but strangely enough, not **ALL** of them.This can be caused by installing/uninstalling several different drivers versions.");
                 logsub("Please click the [Delete Powermizer Settings] button, and then on [Create Powermizer Settings] button again. This should solve the trouble. In case it does not, please send debug info to devs through the [Problems?] button.");
                 throw new Exception();
             }
@@ -535,6 +656,20 @@ namespace NVPMManager
                 // @"PCI\VEN_10DE&DEV_0407&SUBSYS_01211025&REV_A1\4&176ACB4A&0&0008";
                 //ret[1]=instancePath
                 ret.Add(path.ToString());
+
+                
+                //SLI SUPPORT
+                if (Properties.Settings.Default.SLIModeEnabled == true)
+                {
+                    //I do not really know if SLI/Hybrid systems have 2 separate devices here.
+                    //Just in case we look for it. If it's there, we get it and return it so we can reboot it later. If it's not, we do nothing.
+                    object pathSLI = this.regmgr.getDataValue(instancePathKey, "1");
+                    if (pathSLI != null)
+                    {
+                        ret.Add(pathSLI.ToString());
+                    }
+                }
+
             }
             catch
             {

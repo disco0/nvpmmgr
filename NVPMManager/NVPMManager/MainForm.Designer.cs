@@ -58,6 +58,7 @@
             this.pictureBox4 = new System.Windows.Forms.PictureBox();
             this.pictureBox3 = new System.Windows.Forms.PictureBox();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
+            this.labelSLI = new System.Windows.Forms.Label();
             this.groupBoxBattery.SuspendLayout();
             this.groupBoxAC.SuspendLayout();
             this.groupBoxCheck.SuspendLayout();
@@ -214,6 +215,7 @@
             // 
             // groupBoxSelect
             // 
+            this.groupBoxSelect.Controls.Add(this.labelSLI);
             this.groupBoxSelect.Controls.Add(this.groupBoxOther);
             this.groupBoxSelect.Controls.Add(this.checkBoxEnablePM);
             this.groupBoxSelect.Controls.Add(this.groupBoxAC);
@@ -379,6 +381,17 @@
             this.pictureBox2.TabIndex = 0;
             this.pictureBox2.TabStop = false;
             // 
+            // labelSLI
+            // 
+            this.labelSLI.AutoSize = true;
+            this.labelSLI.ForeColor = System.Drawing.Color.Red;
+            this.labelSLI.Location = new System.Drawing.Point(125, 0);
+            this.labelSLI.Name = "labelSLI";
+            this.labelSLI.Size = new System.Drawing.Size(70, 13);
+            this.labelSLI.TabIndex = 18;
+            this.labelSLI.Text = "[ SLI/Hybrid ]";
+            this.labelSLI.Visible = false;
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -450,6 +463,7 @@
         private System.Windows.Forms.GroupBox groupBoxOther;
         private System.Windows.Forms.ComboBox comboBoxSlowDown;
         private System.Windows.Forms.CheckBox checkBoxEnableSlowDown;
+        private System.Windows.Forms.Label labelSLI;
     }
 }
 

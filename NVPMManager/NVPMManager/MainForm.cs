@@ -95,6 +95,19 @@ namespace NVPMManager
                 //initialize powermizerManager
                 this.pwrmzrManager.initialize();
 
+
+                //SLI SUPPORT
+                if (Properties.Settings.Default.SLIModeEnabled == true)
+                {
+                    this.Text = "NVidia PowerMizer Manager *Experimental SLI Mode*";
+                    this.labelSLI.Visible = true;
+                }
+                else
+                {
+                    this.Text = "NVidia PowerMizer Manager";
+                    this.labelSLI.Visible = false;
+                }
+
                 log("Checking if PowerMizer Settings are present...");
 
                 if (!this.pwrmzrManager.powermizerSettingsExist())
@@ -141,6 +154,18 @@ namespace NVPMManager
             this.InitializeSettingsControls();
 
 
+
+            //Add the tooltip to the Instant Apply! button
+            ToolTip Tip1 = new ToolTip();
+            Tip1.AutoPopDelay = 15000;
+            Tip1.UseAnimation = true;
+            Tip1.UseFading = true;
+            Tip1.ToolTipIcon = ToolTipIcon.Info;
+            Tip1.IsBalloon = true;
+            Tip1.ShowAlways = true;
+            Tip1.ToolTipTitle = "Insane Instant Apply!";
+            string message1 = "\nInstant Apply! will apply your settings and reload the video driver without needing a reboot.\n\nHolding the \"Shift Key\" while clicking on this button, will skip all further checks and confirmations, speeding up the process even more.\nPlease use it **only** if you're sure that the configuration you're applying has already worked before!!!!.";
+            Tip1.SetToolTip(this.buttonApplyNow, message1);
            
 
         }
@@ -702,7 +727,7 @@ namespace NVPMManager
             }
             else
             {
-                logsub("Will not override Overheat Slowdown settings");
+                logsub("Will NOT override Overheat Slowdown settings");
             }
            
             return pmset;
@@ -804,6 +829,13 @@ namespace NVPMManager
         //Instant Apply!  button
         private void buttonApplyNow_Click(object sender, EventArgs e)
         {
+            //IF shift is hold while ckicking on the button, skip all the unnecessary checks to speed up the settings applying.
+            bool skipChecks = false;
+            if ((Control.ModifierKeys & Keys.Shift) != 0)
+            {
+                skipChecks = true;
+            }
+
 
             if (this.testConfig())
             {
@@ -811,13 +843,21 @@ namespace NVPMManager
 
                 try
                 {
-                    if (MessageBox.Show("The changes will be applied to the registry.", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    if (skipChecks == false)
                     {
-                        this.pwrmzrManager.changePowermizerSettings(pm);
+                        if (MessageBox.Show("The changes will be applied to the registry.", "Confirmation", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                        {
+                            this.pwrmzrManager.changePowermizerSettings(pm);
+                        }
+                        else
+                        {
+                            return;
+                        }
                     }
                     else
                     {
-                        return;
+                        //Skipping checks. Right to the nitty-gritty
+                        this.pwrmzrManager.changePowermizerSettings(pm);
                     }
                 }
                 catch
@@ -830,56 +870,97 @@ namespace NVPMManager
                 //Instant Apply! 
                 try
                 {
+
+
+                    log("Trying Instant Apply! ...");
+
+                    //Query the data
+                    List<string> data = this.pwrmzrManager.readInstantApplyInfo();
+
+                    Guid videoGuid = new Guid(data[0]);
+                    string instancePath = data[1].ToUpper();
+
+                    //SLI SUPPORT
+                    string instancePathSLI = null;
+                    if (Properties.Settings.Default.SLIModeEnabled == true)
+                    {
+                        if (data.Count == 3)
+                        {
+                            instancePathSLI = data[2].ToUpper();
+                        }
+                    }
+
+
+
+
+                    InstantApplyDisc dlg = new InstantApplyDisc();
+                    DialogResult result;
+
                     
+                    if (skipChecks == false)
+                    {
+                        result = dlg.ShowDialog();
+                    }
+                    else //If we are skipping checks, let's go for it without showing any dialog at all.
+                    {
+                        result = DialogResult.OK;
+                    }
 
-                        log("Trying Instant Apply! ...");
-                       
-                        //Query the data
-                        List<string> data=this.pwrmzrManager.readInstantApplyInfo();
 
-                        Guid videoGuid = new Guid(data[0]);
-                        string instancePath = data[1].ToUpper();
-                     
-                        
-                        InstantApplyDisc dlg = new InstantApplyDisc();
+                    if (result == DialogResult.OK)
+                    {
+                        //Reboot the device
+                        logsub("Reinitializing device: " + instancePath);
 
-                        
-                        if (dlg.ShowDialog() == DialogResult.OK)
+                        DeviceHelper.SetDeviceEnabled(videoGuid, instancePath, false);
+                        DeviceHelper.SetDeviceEnabled(videoGuid, instancePath, true);
+
+                        logsub("Success...");
+
+
+                        //SLI SUPPORT
+                        if (Properties.Settings.Default.SLIModeEnabled == true)
                         {
-                            //Reboot the device
-                            logsub("Reinitializing device: " + instancePath);
-                           
-                            DeviceHelper.SetDeviceEnabled(videoGuid, instancePath, false);
-                            DeviceHelper.SetDeviceEnabled(videoGuid, instancePath, true);
+                            if (instancePathSLI != null)//If we really have another device here, let's reboot it
+                            {
+                                //Reboot the device
+                                logsub("Reinitializing SLI device: " + instancePathSLI);
 
-                            //dirty patch: After rebooting the device, due to temporary resolution change, 
-                            //the width of the dialog changes, so we fix it here.
-                            if (this.expanded) this.Width = 900; else this.Width = 470;
+                                DeviceHelper.SetDeviceEnabled(videoGuid, instancePathSLI, false);
+                                DeviceHelper.SetDeviceEnabled(videoGuid, instancePathSLI, true);
 
-                            logsub("Success...");
-
+                                logsub("Success... (SLIDevice).");
+                            }
                         }
-                        else
-                        {
-                            return;
-                        }
+
+                        //dirty patch: After rebooting the device, due to temporary resolution change, 
+                        //the width of the dialog changes, so we fix it here.
+                        if (this.expanded) this.Width = 900; else this.Width = 470;
+
+
+
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
                 catch
                 {
                     logsub("Error while trying Instant Apply! . Try rebooting manually.");
                     MessageBox.Show("At the moment your system does not support the Instant Apply! feature. Check debug console for more details.");
                     return;
-                                        
+
                 }
             }
-            
+
         }
 
         //Collect information for a bug report
         private void buttonReport_Click(object sender, EventArgs e)
         {
 
-
+           
             Support dlgs = new Support(this.pwrmzrManager, this._log_console.Text);
             
             dlgs.ShowDialog();
@@ -916,6 +997,8 @@ namespace NVPMManager
                 this.comboBoxSlowDown.SelectedIndex = 0;
             }
         }
+
+  
 
 
     }
