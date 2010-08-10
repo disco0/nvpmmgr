@@ -577,7 +577,7 @@ namespace NVPMManager
         }
 
         //Create a powermizerSettings structure from the controls configuration
-        private PwrMzrSettings collectDAtaFromControls()
+        private PwrMzrSettings collectDataFromControls()
         {
 
             PwrMzrValue pm_enab, gov, battfix, acfix;
@@ -605,8 +605,8 @@ namespace NVPMManager
                     {
                         //0x3333
                         gov = PwrMzrValue.BAT_ON_AC_ON;
-                        acfix= PwrMzrValue.PM_DISABLED;
-                        battfix = PwrMzrValue.PM_DISABLED;
+                        acfix= PwrMzrValue.MAX_PERF;
+                        battfix = PwrMzrValue.MAX_PERF;
 
                     }
                     else
@@ -614,7 +614,7 @@ namespace NVPMManager
                         //0x3322
                         gov = PwrMzrValue.BAT_ON_AC_FIXED;
                         acfix = ((KeyValuePair<PwrMzrValue, string>)this.comboBoxLevelAC.SelectedItem).Key;
-                        battfix = PwrMzrValue.PM_DISABLED;
+                        battfix = PwrMzrValue.MAX_PERF;
                     }
 
                 }
@@ -625,7 +625,7 @@ namespace NVPMManager
                         //0x2233
                         gov = PwrMzrValue.BAT_FIXED_AC_ON;
                         battfix = ((KeyValuePair<PwrMzrValue, string>)this.comboBoxLevelBatt.SelectedItem).Key;
-                        acfix = PwrMzrValue.PM_DISABLED;
+                        acfix = PwrMzrValue.MAX_PERF;
                     }
                     else
                     {
@@ -786,7 +786,7 @@ namespace NVPMManager
 
             if (this.testConfig())
             {
-                PwrMzrSettings pm = this.collectDAtaFromControls();
+                PwrMzrSettings pm = this.collectDataFromControls();
 
                 try
                 {
@@ -829,7 +829,7 @@ namespace NVPMManager
         //Instant Apply!  button
         private void buttonApplyNow_Click(object sender, EventArgs e)
         {
-            //IF shift is hold while ckicking on the button, skip all the unnecessary checks to speed up the settings applying.
+            //IF shift is hold while ckicking on the button, skip all the unnecessary checks to speed up the settings applying. INSANE INSTANT APPLY!
             bool skipChecks = false;
             if ((Control.ModifierKeys & Keys.Shift) != 0)
             {
@@ -839,7 +839,7 @@ namespace NVPMManager
 
             if (this.testConfig())
             {
-                PwrMzrSettings pm = this.collectDAtaFromControls();
+                PwrMzrSettings pm = this.collectDataFromControls();
 
                 try
                 {

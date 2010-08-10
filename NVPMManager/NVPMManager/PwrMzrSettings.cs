@@ -49,9 +49,9 @@ namespace NVPMManager
         public Entry PowerMizerGovernor;
 
         //Performace level on Battery (and on AC), when Fixed is selected
-        /// 1- Maximun Performance, Minimum power consumption
-        /// 2- Medium Performance , Medium power concumption
-        /// 3- Minimum Performance, Maximum power consumption
+        /// 1- Maximun Performance, Minimum power saving
+        /// 2- Medium Performance , Medium power saving
+        /// 3- Minimum Performance, Maximum power saving
         public Entry PowerMizerBatteryFixedLevel;
         public Entry PowerMizerACFixedLevel;
 
