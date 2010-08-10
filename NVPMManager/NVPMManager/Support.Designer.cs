@@ -48,7 +48,7 @@
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(334, 25);
             this.label1.TabIndex = 0;
-            this.label1.Text = "NVidia PowerMizer Manager 0.98";
+            this.label1.Text = "NVidia PowerMizer Manager 0.99";
             // 
             // label2
             // 
