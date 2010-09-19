@@ -185,11 +185,17 @@ namespace NVPMManager
                 if (possibleKeys.Count == 0)
                 {
                     logsub("Changing to alternate Nvidia root key identification... (Not fully tested. Please provide feedback)");
+                   
+                    string devdesc;
                     foreach (RegistryKey k in matches)
                     {
-                        if (((string)regmgr.getDataValue(k, "Device Description")).Contains("NVIDIA"))
+                        devdesc=((string)regmgr.getDataValue(k, "Device Description"));
+                        if ( devdesc !=null   )   
                         {
-                            possibleKeys.Add(k);
+                            if (devdesc.Contains("NVIDIA"))
+                            {
+                                possibleKeys.Add(k);
+                            }
                         }
                     }
 

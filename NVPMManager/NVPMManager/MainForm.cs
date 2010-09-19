@@ -164,7 +164,7 @@ namespace NVPMManager
             Tip1.IsBalloon = true;
             Tip1.ShowAlways = true;
             Tip1.ToolTipTitle = "Insane Instant Apply!";
-            string message1 = "\nInstant Apply! will apply your settings and reload the video driver without needing a reboot.\n\nHolding the \"Shift Key\" while clicking on this button, will skip all further checks and confirmations, speeding up the process even more.\nPlease use it **only** if you're sure that the configuration you're applying has already worked before!!!!.";
+            string message1 = "\nInstant Apply! will apply your settings and reload the video driver without the need of a reboot.\n\nHolding the \"Shift Key\" while clicking on this button, will skip all further checks and confirmations, speeding up the process even more.\nPlease use it **only** if you're sure that the configuration you're applying has already been tested before!!!!.";
             Tip1.SetToolTip(this.buttonApplyNow, message1);
            
 
